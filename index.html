@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weather Now</title>
+  <meta name="description" content="Simple weather app: type a city and get the current temperature." />
+  <style>
+    :root{
+      --bg:#0f172a;           /* slate-900 */
+      --card:#111827;         /* gray-900 */
+      --muted:#94a3b8;        /* slate-400 */
+      --text:#e5e7eb;         /* gray-200 */
+      --accent:#22d3ee;       /* cyan-400 */
+      --accent-2:#60a5fa;     /* blue-400 */
+      --danger:#f87171;       /* red-400 */
+      --ok:#34d399;           /* emerald-400 */
+      --radius:18px;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(34,211,238,.15), transparent),
+                  radial-gradient(1000px 600px at 120% 10%, rgba(96,165,250,.15), transparent),
+                  var(--bg);
+      color:var(--text);
+      display:grid; place-items:center; padding:24px;
+    }
+    .wrap{width:100%; max-width:720px}
+
+    .card{
+      background:linear-gradient(180deg, rgba(17,24,39,.9), rgba(17,24,39,.75));
+      backdrop-filter: blur(8px);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:22px; overflow:hidden;
+    }
+
+    .title{
+      display:flex; align-items:center; gap:12px; margin:0 0 8px 0;
+      font-weight:700; letter-spacing:.2px; font-size:clamp(20px, 3vw, 26px);
+    }
+    .title .dot{width:8px; height:8px; border-radius:999px; background:var(--accent); box-shadow:0 0 18px var(--accent)}
+    .subtitle{margin:0 0 18px 0; color:var(--muted); font-size:14px}
+
+    form{display:flex; gap:10px; width:100%; margin-bottom:12px}
+    input[type="text"]{
+      flex:1; padding:14px 14px; border-radius:14px; border:1px solid rgba(255,255,255,.08);
+      background:#0b1220; color:var(--text); outline:none; font-size:15px;
+    }
+    input::placeholder{color:#64748b}
+    button{
+      padding:14px 16px; border-radius:14px; border:0; cursor:pointer; font-weight:600; font-size:15px; letter-spacing:.2px;
+      background:linear-gradient(120deg, var(--accent), var(--accent-2)); color:#021018;
+      transition: transform .08s ease, filter .2s ease; white-space:nowrap;
+    }
+    button:hover{filter:brightness(1.1)}
+    button:active{transform:translateY(1px)}
+
+    .status{min-height:22px; font-size:13px; color:var(--muted); margin:2px 2px 16px}
+    .status.error{color:var(--danger)}
+    .status.ok{color:var(--ok)}
+
+    .grid{
+      display:grid; gap:14px; grid-template-columns:1fr; align-items:stretch;
+    }
+    @media (min-width:640px){
+      .grid{grid-template-columns:1.2fr .8fr}
+    }
+
+    .panel{
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:14px; padding:16px 16px; background:rgba(2,6,23,.55);
+    }
+    .row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0}
+    .row + .row{border-top:1px dashed rgba(148,163,184,.25)}
+    .k{color:var(--muted); font-size:13px}
+    .v{font-weight:700}
+
+    .current{
+      display:flex; gap:16px; align-items:center
+    }
+    .temp{font-size:clamp(44px, 8vw, 64px); font-weight:800; line-height:1}
+    .unit{font-size:16px; color:var(--muted); margin-left:6px}
+    .cond{display:flex; align-items:center; gap:10px}
+    .cond img{width:48px; height:48px}
+
+    .footer{margin-top:14px; font-size:12px; color:var(--muted); text-align:center}
+    .link{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1 class="title"><span class="dot"></span>Weather Now</h1>
+      <p class="subtitle">Type a city or PIN/postcode. We'll show you the current temperature and conditions.</p>
+
+      <form id="weatherForm" autocomplete="off">
+        <input id="locationInput" type="text" inputmode="search" placeholder="e.g., London, 560001, Paris" aria-label="Location" />
+        <button id="goBtn" type="submit">Get Weather</button>
+      </form>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+
+      <div class="grid">
+        <section id="currentPanel" class="panel">
+          <div class="current">
+            <div>
+              <div class="temp" id="temp">--<span class="unit" id="unit">°C</span></div>
+              <div class="cond" id="cond"><img id="icon" alt="" src="" style="display:none"/><span id="condText">—</span></div>
+              <div class="k" id="updated">—</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="row"><span class="k">Feels like</span><span class="v" id="feels">—</span></div>
+          <div class="row"><span class="k">Humidity</span><span class="v" id="humidity">—</span></div>
+          <div class="row"><span class="k">Wind</span><span class="v" id="wind">—</span></div>
+          <div class="row"><span class="k">Air Quality (PM2.5)</span><span class="v" id="pm25">—</span></div>
+        </section>
+      </div>
+
+      <div class="footer">
+        Data by <a class="link" href="https://www.weatherapi.com/" target="_blank" rel="noopener">WeatherAPI</a> • Tip: press <kbd>Enter</kbd> to search. Your last search is remembered on this device.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // === CONFIG ===
+    const API_KEY = "82e3dcdfa2654a5d95c184545251111"; // Provided by you
+    const BASE = "https://api.weatherapi.com/v1/current.json"; // Use HTTPS to avoid mixed-content blocks
+
+    // === State ===
+    const els = {
+      form: document.getElementById('weatherForm'),
+      input: document.getElementById('locationInput'),
+      status: document.getElementById('status'),
+      temp: document.getElementById('temp'),
+      unit: document.getElementById('unit'),
+      condText: document.getElementById('condText'),
+      icon: document.getElementById('icon'),
+      updated: document.getElementById('updated'),
+      feels: document.getElementById('feels'),
+      humidity: document.getElementById('humidity'),
+      wind: document.getElementById('wind'),
+      pm25: document.getElementById('pm25'),
+    };
+
+    let controller = null;
+
+    function setStatus(msg, type = ''){
+      els.status.textContent = msg || '';
+      els.status.className = 'status' + (type ? ' ' + type : '');
+    }
+
+    function formatWind(kph, dir){
+      if (kph == null) return '—';
+      const mph = (kph / 1.60934).toFixed(1);
+      return `${kph.toFixed ? kph.toFixed(1) : kph} kph (${mph}) ${dir || ''}`.trim();
+    }
+
+    function updateUI(data){
+      const { current, location } = data;
+      const c = current;
+      els.temp.innerHTML = `${Math.round(c.temp_c)}<span class="unit" id="unit">°C</span>`;
+      els.condText.textContent = c.condition?.text ?? '—';
+      if (c.condition?.icon){
+        els.icon.src = `https:${c.condition.icon}`;
+        els.icon.style.display = 'inline-block';
+        els.icon.alt = c.condition.text || 'Weather icon';
+      } else {
+        els.icon.style.display = 'none';
+      }
+      els.updated.textContent = `Updated: ${location?.name ?? ''} • ${location?.country ?? ''} • ${current?.last_updated}`;
+      els.feels.textContent = `${Math.round(c.feelslike_c)} °C / ${Math.round(c.feelslike_f)} °F`;
+      els.humidity.textContent = `${c.humidity}%`;
+      els.wind.textContent = formatWind(c.wind_kph, c.wind_dir);
+
+      const pm25 = c.air_quality && (c.air_quality.pm2_5 ?? c.air_quality["pm2_5"]);
+      els.pm25.textContent = pm25 != null ? `${pm25.toFixed ? pm25.toFixed(1) : pm25}` : '—';
+    }
+
+    async function getWeather(q){
+      if (!q) { setStatus('Please enter a location.', 'error'); return; }
+
+      // cancel previous request if any
+      if (controller) controller.abort();
+      controller = new AbortController();
+
+      setStatus('Fetching weather…');
+      try{
+        const url = `${BASE}?key=${encodeURIComponent(API_KEY)}&q=${encodeURIComponent(q)}&aqi=yes`;
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok){
+          if (res.status === 400){
+            const j = await res.json().catch(()=>null);
+            const msg = j?.error?.message || 'Invalid request.';
+            throw new Error(msg);
+          }
+          throw new Error(`Network error (${res.status})`);
+        }
+        const data = await res.json();
+        updateUI(data);
+        setStatus('Up to date.', 'ok');
+        localStorage.setItem('lastLocation', q);
+      }catch(err){
+        if (err.name === 'AbortError') return; // user typed a new query quickly
+        console.error(err);
+        setStatus(`Oops: ${err.message || 'Something went wrong.'}`, 'error');
+      }
+    }
+
+    // === Events ===
+    els.form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const q = els.input.value.trim();
+      getWeather(q);
+    });
+
+    // Allow pressing Enter inside input to submit (already default), and autofill from last search
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const last = localStorage.getItem('lastLocation') || 'London';
+      els.input.value = last;
+      getWeather(last);
+    });
+  </script>
+</body>
+</html>
